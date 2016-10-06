@@ -652,8 +652,9 @@ public:
     /** Call the attached function
      */
     R call() const {
-        MBED_ASSERT(_ops);
+        if (_ops)
         return _ops->call(this);
+		else return (R) 0;
     }
 
     /** Call the attached function
