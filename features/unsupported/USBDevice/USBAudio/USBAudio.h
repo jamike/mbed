@@ -253,6 +253,9 @@ private:
 
     // stream available ?
     volatile bool available;
+	// host activity
+    volatile bool InIso, OutIso;
+
 
     // interrupt OUT has been received
     volatile bool interruptOUT;

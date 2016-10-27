@@ -28,6 +28,11 @@ USBAudio::USBAudio(uint32_t frequency_in, uint8_t channel_nb_in, uint32_t freque
     volMin = 0x0000;
     volMax = 0x0100;
     volRes = 0x0004;
+	/*  host listen */
+	InIso = false;
+	/* host transmit */
+	OutIso = false;
+	/*  buffer from host received */
     available = false;
 
     FREQ_IN = frequency_in;
@@ -84,16 +89,20 @@ bool USBAudio::readWrite(uint8_t * buf_read, uint8_t * buf_write) {
     buf_stream_in = buf_read;
     SOF_handler = false;
     writeIN = false;
+	//printf("i%d,o%d\n",InIso,OutIso);
     if (interruptIN) {
         USBDevice::writeNB(EP3IN, buf_write, PACKET_SIZE_ISO_OUT, PACKET_SIZE_ISO_OUT);
     } else {
         buf_stream_out = buf_write;
     }
-    while (!available);
+	/*  wait received buffer or host not transmitting */
+    while ((!available)&&(OutIso));
     if (interruptIN) {
-        while (!writeIN);
+		/*  wait buffer sent or host not listening */
+        while ((!writeIN) && (InIso));
     }
     while (!SOF_handler);
+	available = false;
     return true;
 }
 
@@ -155,8 +164,8 @@ bool USBAudio::EPISO_IN_callback() {
 // Called in ISR context on each start of frame
 void USBAudio::SOF(int frameNumber) {
     uint32_t size = 0;
-    this->frameNumber = frameNumber;
-    if (!interruptOUT) {
+this->frameNumber = frameNumber;
+    if ((!interruptOUT) && (OutIso)) {
         // read the isochronous endpoint
         if (buf_stream_in != NULL) {
             if (USBDevice::readEP_NB(EP3OUT, (uint8_t *)buf_stream_in, &size, PACKET_SIZE_ISO_IN)) {
@@ -169,7 +178,7 @@ void USBAudio::SOF(int frameNumber) {
         }
     }
 
-    if (!interruptIN) {
+    if ((!interruptIN)&& (InIso)) {
         // write if needed
         if (buf_stream_out != NULL) {
             USBDevice::writeNB(EP3IN, (uint8_t *)buf_stream_out, PACKET_SIZE_ISO_OUT, PACKET_SIZE_ISO_OUT);
@@ -193,7 +202,8 @@ bool USBAudio::USBCallback_setConfiguration(uint8_t configuration) {
     realiseEndpoint(EP3IN, PACKET_SIZE_ISO_OUT, ISOCHRONOUS);
 
     // activate readings on this endpoint
-    readStart(EP3OUT, PACKET_SIZE_ISO_IN);
+	if (OutIso)
+    readStart(EPISO_OUT, PACKET_SIZE_ISO_IN);
     return true;
 }
 
@@ -201,14 +211,24 @@ bool USBAudio::USBCallback_setConfiguration(uint8_t configuration) {
 // Called in ISR context
 // Set alternate setting. Return false if the alternate setting is not supported
 bool USBAudio::USBCallback_setInterface(uint16_t interface, uint8_t alternate) {
-    if (interface == 0 && alternate == 0) {
+    printf("%d:%d\n",interface,alternate);
+	if (interface == 0 && alternate == 0) {
         return true;
     }
     if (interface == 1 && (alternate == 0 || alternate == 1)) {
-        return true;
+        /* update host send status */
+		OutIso = (alternate == 1)? true:false;
+		interruptOUT = false;
+		available = false;
+		if (OutIso)
+			readStart(EPISO_OUT, PACKET_SIZE_ISO_OUT);
+		return true;
     }
     if (interface == 2 && (alternate == 0 || alternate == 1)) {
-        return true;
+        /* update host listen status */
+		InIso = (alternate == 1)? true:false;
+		interruptIN=false;
+		return true;
     }
     return false;
 }

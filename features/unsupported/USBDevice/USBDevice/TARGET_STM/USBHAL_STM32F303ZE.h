@@ -114,7 +114,7 @@ USBHAL::USBHAL(void) {
 	/* hardcoded size of FIFO according definition*/
     HAL_PCDEx_PMAConfig(&hpcd , 0x00 , PCD_SNG_BUF, 0x30);
     HAL_PCDEx_PMAConfig(&hpcd , 0x80 , PCD_SNG_BUF, 0x70);
-#if 1
+#if 0
     HAL_PCDEx_PMAConfig(&hpcd , 0x3, PCD_DBL_BUF, 0x018000b0);
 #else
 	HAL_PCDEx_PMAConfig(&hpcd , 0x3, PCD_SNG_BUF, 0x180);
