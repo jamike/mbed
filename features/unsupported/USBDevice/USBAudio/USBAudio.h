@@ -157,8 +157,8 @@ public:
 	void attachTx(T *tptr, void(T::*mptr)(void)) {
         txDone.attach(tptr, mptr);
     }
-
-
+    /*  FrameNumber */
+    uint32_t frameNumber;
 protected:
 
     /*

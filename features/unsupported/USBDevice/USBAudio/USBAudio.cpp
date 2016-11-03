@@ -148,7 +148,7 @@ bool USBAudio::EPISO_IN_callback() {
 // Called in ISR context on each start of frame
 void USBAudio::SOF(int frameNumber) {
     uint32_t size = 0;
-
+    this->frameNumber = frameNumber;
     if (!interruptOUT) {
         // read the isochronous endpoint
         if (buf_stream_in != NULL) {
