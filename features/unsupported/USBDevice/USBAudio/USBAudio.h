@@ -115,6 +115,7 @@ public:
     */
     bool write(uint8_t * buf);
 
+	void writeSync(uint8_t *buf);
     /**
     * Write and read an audio packet at the same time (on the same frame)
     *
@@ -133,6 +134,14 @@ public:
     void attach(void(*fptr)(void)) {
         updateVol.attach(fptr);
     }
+	/** attach a handler to Tx Done
+     *
+     * @param function Function to attach
+     *
+     */
+    void attachTx(void(*fptr)(void)) {
+        txDone.attach(fptr);
+    }
 
     /** Attach a nonstatic void/void member function to update the volume
      *
@@ -143,6 +152,10 @@ public:
     template<typename T>
     void attach(T *tptr, void(T::*mptr)(void)) {
         updateVol.attach(tptr, mptr);
+    }
+	template<typename T>
+	void attachTx(T *tptr, void(T::*mptr)(void)) {
+        txDone.attach(tptr, mptr);
     }
 
 
@@ -276,6 +289,9 @@ private:
 
     // callback to update volume
     Callback<void()> updateVol;
+
+	// callback transmit Done
+	Callback<void()> txDone;
 
     // boolean showing that the SOF handler has been called. Useful for readNB.
     volatile bool SOF_handler;
