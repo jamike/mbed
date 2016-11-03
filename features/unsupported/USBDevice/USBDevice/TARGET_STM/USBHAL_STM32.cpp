@@ -103,8 +103,10 @@ extern "C" {
 		for(i=0;i<hpcd->Init.dev_endpoints;i++) {
 			priv->epComplete[2*i]=0;
 			HAL_PCD_EP_Close(hpcd,EP_ADDR(2*i));
+			HAL_PCD_EP_Flush(hpcd,EP_ADDR(2*i));
 			priv->epComplete[2*i+1]=0;
 			HAL_PCD_EP_Close(hpcd,EP_ADDR(2*i+1));
+			HAL_PCD_EP_Flush(hpcd,EP_ADDR(2*i+1));
 
 		}
         void (USBHAL::*func)(void)=priv->bus_reset;
