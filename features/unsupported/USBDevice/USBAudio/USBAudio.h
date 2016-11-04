@@ -106,7 +106,7 @@ public:
     * @returns true if successfull
     */
     bool readNB(uint8_t * buf);
-    void readSync(uint8_t *buf);
+    uint32_t readSync(uint8_t *buf);
     /**
     * Write an audio packet. During a frame, only a single writing (you can't write and read an audio packet during the same frame)can be done using this method.
     *

@@ -127,10 +127,11 @@ void USBAudio::writeSync(uint8_t *buf)
    USBDevice::writeNB(EP3IN, buf, PACKET_SIZE_ISO_OUT, PACKET_SIZE_ISO_OUT);
 }
 
-void USBAudio::readSync(uint8_t *buf)
+uint32_t USBAudio::readSync(uint8_t *buf)
 {
     uint32_t size = 0;
     USBDevice::readEP(EP3OUT, (uint8_t *)buf, &size, PACKET_SIZE_ISO_IN);
+	return size;
 }
 
 float USBAudio::getVolume() {
