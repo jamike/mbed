@@ -106,7 +106,7 @@ public:
     * @returns true if successfull
     */
     bool readNB(uint8_t * buf);
-
+    void readSync(uint8_t *buf);
     /**
     * Write an audio packet. During a frame, only a single writing (you can't write and read an audio packet during the same frame)can be done using this method.
     *
@@ -142,6 +142,14 @@ public:
     void attachTx(void(*fptr)(void)) {
         txDone.attach(fptr);
     }
+    /** attach a handler to Rx Done
+     *
+     * @param function Function to attach
+     *
+     */
+    void attachRx(void(*fptr)(void)) {
+        rxDone.attach(fptr);
+    }
 
     /** Attach a nonstatic void/void member function to update the volume
      *
@@ -157,6 +165,11 @@ public:
 	void attachTx(T *tptr, void(T::*mptr)(void)) {
         txDone.attach(tptr, mptr);
     }
+    template<typename T>
+	void attachRx(T *tptr, void(T::*mptr)(void)) {
+        rxDone.attach(tptr, mptr);
+    }
+
     /*  FrameNumber */
     uint32_t frameNumber;
 protected:
@@ -292,6 +305,8 @@ private:
 
 	// callback transmit Done
 	Callback<void()> txDone;
+    // callback transmit Done
+	Callback<void()> rxDone;
 
     // boolean showing that the SOF handler has been called. Useful for readNB.
     volatile bool SOF_handler;

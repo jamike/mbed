@@ -118,6 +118,12 @@ void USBAudio::writeSync(uint8_t *buf)
    USBDevice::writeNB(EP3IN, buf, PACKET_SIZE_ISO_OUT, PACKET_SIZE_ISO_OUT);
 }
 
+void USBAudio::readSync(uint8_t *buf)
+{
+    uint32_t size = 0;
+    USBDevice::readEP(EP3OUT, (uint8_t *)buf, &size, PACKET_SIZE_ISO_IN);
+}
+
 float USBAudio::getVolume() {
     return (mute) ? 0.0 : volume;
 }
@@ -131,6 +137,7 @@ bool USBAudio::EPISO_OUT_callback() {
         available = true;
         buf_stream_in = NULL;
     }
+    else 	rxDone.call();
     readStart(EP3OUT, PACKET_SIZE_ISO_IN);
     return false;
 }
