@@ -17,24 +17,31 @@
 
 // USBAudio object
 USBAudio audio(FREQ_SPK, NB_CHA_SPK, FREQ_MIC, NB_CHA_MIC, 0xab45, 0x0378);
+int filled;
+int buf[2][LENGTH_AUDIO_PACKET_SPK/sizeof(int)];
+void tx_audio(void)
+{
+    audio.writeSync((uint8_t *)buf[filled]);
+}
+void rx_audio(void)
+{
+    if (filled) {
+        audio.readSync((uint8_t *)buf[0]);
+        filled =0;
+    }
+    else { audio.readSync((uint8_t *)buf[1]);
+        filled =1;
+    }
+}
 
 int main() {
-    // buffer of int
-    int buf_in[LENGTH_AUDIO_PACKET_SPK/sizeof(int)];
-    int buf_out[LENGTH_AUDIO_PACKET_MIC/sizeof(int)];
-    int * stream_out = buf_in;
-    int * stream_in = buf_out;
-    int * tmp = NULL;
-
-    while (1) {
-        // read and write one audio packet each frame
-        audio.readWrite((uint8_t *)stream_in, (uint8_t *)stream_out);
-
-        // swap the buffers
-        tmp = stream_in;
-        stream_in = stream_out;
-        stream_out = tmp;
-    }
+filled = 0;
+memset(&buf[0][0], 0, sizeof (buf));
+audio.attachTx(tx_audio);
+audio.attachRx(rx_audio);
+/*  start the tx with a silent packet */
+audio.write((uint8_t *)buf[0]);
+while(1);
 }
 
 
