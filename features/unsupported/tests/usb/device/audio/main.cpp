@@ -18,20 +18,30 @@
 // USBAudio object
 USBAudio audio(FREQ_SPK, NB_CHA_SPK, FREQ_MIC, NB_CHA_MIC, 0xab45, 0x0378);
 int filled;
-int buf[2][LENGTH_AUDIO_PACKET_SPK/sizeof(int)];
+int ready = 2;
+int buf[4][LENGTH_AUDIO_PACKET_SPK/sizeof(int)];
 void tx_audio(void)
 {
-    audio.writeSync((uint8_t *)buf[filled]);
+	static int framenum=0;
+	int cur = audio.frameNumber;
+	/*  alway used some buffer in advance  */
+	ready = (filled+2)&0x3;
+	audio.writeSync((uint8_t *)buf[ready]);
+	if ((cur) && (framenum) &&(cur != framenum+1)) {
+		if (cur == (framenum +2)) printf(".\n");
+		else printf("%x\n");
+	}
+	framenum = cur;
 }
+
+
 void rx_audio(void)
 {
-    if (filled) {
-        audio.readSync((uint8_t *)buf[0]);
-        filled =0;
-    }
-    else { audio.readSync((uint8_t *)buf[1]);
-        filled =1;
-    }
+	int size=0;
+	int next = (filled + 1)&0x3; 
+	size = audio.readSync((uint8_t *)buf[next]);
+	if (size ) filled = next;
+	if ((size) && (size!=LENGTH_AUDIO_PACKET_MIC)) printf("%d\n",size);
 }
 
 int main() {
@@ -40,7 +50,7 @@ memset(&buf[0][0], 0, sizeof (buf));
 audio.attachTx(tx_audio);
 audio.attachRx(rx_audio);
 /*  start the tx with a silent packet */
-audio.write((uint8_t *)buf[0]);
+audio.write((uint8_t *)buf[2]);
 while(1);
 }
 
