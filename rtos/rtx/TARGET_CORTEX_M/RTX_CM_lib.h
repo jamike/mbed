@@ -362,7 +362,7 @@ static uint32_t thread_stack_main[DEFAULT_STACK_SIZE / sizeof(uint32_t)];
 #elif defined(TARGET_XDOT_L151CC)
 static uint32_t thread_stack_main[DEFAULT_STACK_SIZE * 6 / sizeof(uint32_t)];
 #else
-static uint32_t thread_stack_main[DEFAULT_STACK_SIZE * 2 / sizeof(uint32_t)];
+static uint32_t thread_stack_main[DEFAULT_STACK_SIZE * 6 / sizeof(uint32_t)];
 #endif
 osThreadDef_t os_thread_def_main = {(os_pthread)pre_main, osPriorityNormal, 1U, sizeof(thread_stack_main), thread_stack_main};
 
