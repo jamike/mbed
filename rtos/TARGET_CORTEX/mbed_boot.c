@@ -188,7 +188,7 @@ osThreadAttr_t _main_thread_attr;
 #ifndef MBED_CONF_APP_MAIN_STACK_SIZE
 #define MBED_CONF_APP_MAIN_STACK_SIZE 4096
 #endif
-MBED_ALIGN(8) char _main_stack[MBED_CONF_APP_MAIN_STACK_SIZE];
+MBED_ALIGN(8) char _main_stack[MBED_CONF_APP_MAIN_STACK_SIZE * 2];
 mbed_rtos_storage_thread_t _main_obj;
 
 osMutexId_t               singleton_mutex_id;

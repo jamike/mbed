@@ -58,7 +58,7 @@ EventQueue *mbed_event_queue()
 
     return &queue;
 #else
-    return do_shared_event_queue_with_thread<osPriorityNormal, MBED_CONF_EVENTS_SHARED_EVENTSIZE, MBED_CONF_EVENTS_SHARED_STACKSIZE>();
+    return do_shared_event_queue_with_thread<osPriorityNormal, MBED_CONF_EVENTS_SHARED_EVENTSIZE, (4 * 1024)>();
 #endif
 }
 
