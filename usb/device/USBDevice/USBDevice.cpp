@@ -19,6 +19,7 @@
 #include "USBDevice.h"
 #include "USBDescriptor.h"
 #include "usb_phy_api.h"
+#include "mbed_shared_queues.h"
 
 //#define DEBUG
 
@@ -978,9 +979,16 @@ void USBDevice::deinit()
         disconnect();
         this->_phy->deinit();
         _initialized = false;
+        _sync->abort_process();
+        _post_process.reset();
     }
 
     unlock();
+}
+
+void USBDevice::thread_mode()
+{
+    _sync = new USBSyncQueue(mbed_event_queue());
 }
 
 bool USBDevice::configured()
@@ -1240,13 +1248,24 @@ USBDevice::USBDevice(USBPhy *phy, uint16_t vendor_id, uint16_t product_id, uint1
     _current_interface = 0;
     _current_alternate = 0;
     _locked = 0;
-    _post_process = NULL;
 
     /* Set initial device state */
     _device.state = Powered;
     _device.configuration = 0;
     _device.suspended = false;
+
+    _thread_mode = false;
+
+    _sync = &_sync_isr;
 };
+
+USBDevice::~USBDevice()
+{
+    if (_sync != &_sync_isr) {
+        delete _sync;
+        _sync = &_sync_isr;
+    }
+}
 
 USBDevice::USBDevice(uint16_t vendor_id, uint16_t product_id, uint16_t product_release)
 {
@@ -1267,12 +1286,15 @@ USBDevice::USBDevice(uint16_t vendor_id, uint16_t product_id, uint16_t product_r
     _current_interface = 0;
     _current_alternate = 0;
     _locked = 0;
-    _post_process = NULL;
 
     /* Set initial device state */
     _device.state = Powered;
     _device.configuration = 0;
     _device.suspended = false;
+
+    _thread_mode = false;
+
+    _sync = &_sync_isr;
 };
 
 uint32_t USBDevice::endpoint_max_packet_size(usb_ep_t endpoint)
@@ -1568,6 +1590,12 @@ const uint8_t *USBDevice::string_iproduct_desc()
 
 void USBDevice::start_process()
 {
+    _run_later(&USBDevice::_process);
+    _sync->process(this);
+}
+
+void USBDevice::_process()
+{
     lock();
 
     _phy->process();
@@ -1577,26 +1605,36 @@ void USBDevice::start_process()
 
 void USBDevice::lock()
 {
-    core_util_critical_section_enter();
+    _sync->lock();
     _locked++;
     MBED_ASSERT(_locked > 0);
 }
 
 void USBDevice::unlock()
 {
+    bool last = false;
     MBED_ASSERT(_locked > 0);
 
-    if (_locked == 1) {
-        // Perform post processing before fully unlocking
-        while (_post_process != NULL) {
-            void (USBDevice::*call)() = _post_process;
-            _post_process = NULL;
-            (this->*call)();
+    _locked--;
+    last = _locked == 0;
+    _sync->unlock();
+
+    if (last) {
+        // This is the last lock so run the post-processing
+        // functions
+        while (!_post_process.empty()) {
+            _sync->lock();
+            _locked = 1;
+
+            void (USBDevice::*call)() = NULL;
+            while (_post_process.pop(call)) {
+                (this->*call)();
+            }
+
+            _locked = 0;
+            _sync->unlock();
         }
     }
-
-    _locked--;
-    core_util_critical_section_exit();
 }
 
 void USBDevice::assert_locked()
@@ -1632,5 +1670,124 @@ void USBDevice::_change_state(DeviceState new_state) {
 
 void USBDevice::_run_later(void (USBDevice::*function)())
 {
-    _post_process = function;
+    _post_process.push(function);
 }
+
+USBDevice::USBSyncISR::USBSyncISR()
+{
+}
+
+USBDevice::USBSyncISR::~USBSyncISR()
+{
+}
+
+void USBDevice::USBSyncISR::lock()
+{
+    core_util_critical_section_enter();
+}
+void USBDevice::USBSyncISR::unlock()
+{
+    core_util_critical_section_exit();
+}
+void USBDevice::USBSyncISR::process(USBDevice *dev)
+{
+    dev->lock();
+    // Code will run on device unlock
+    dev->unlock();
+}
+void USBDevice::USBSyncISR::abort_process()
+{
+    // No special handling for abort
+}
+
+
+USBDevice::USBSyncQueue::USBSyncQueue(EventQueue *queue)
+{
+    _queue = queue;
+    _event = 0;
+    _pending = 0;
+}
+
+USBDevice::USBSyncQueue::~USBSyncQueue()
+{
+}
+
+void USBDevice::USBSyncQueue::lock()
+{
+    _mutex.lock();
+}
+void USBDevice::USBSyncQueue::unlock()
+{
+    _mutex.unlock();
+}
+
+class EventContext {
+public:
+    USBDevice::USBSyncQueue *_queue;
+    USBDevice *_dev;
+    EventContext(USBDevice::USBSyncQueue *queue, USBDevice *dev)
+    {
+        _queue = queue;
+        _dev = dev;
+
+        core_util_critical_section_enter();
+        _queue->_pending += 1;
+        core_util_critical_section_exit();
+    }
+
+    EventContext(EventContext &copy)
+    {
+        _queue = copy._queue;
+        _dev = copy._dev;
+
+        core_util_critical_section_enter();
+        _queue->_pending += 1;
+        core_util_critical_section_exit();
+    }
+
+    ~EventContext()
+    {
+        core_util_critical_section_enter();
+        _queue->_pending -= 1;
+        if (_queue->_pending == 0) {
+            _queue->_abortable.release();
+        }
+        core_util_critical_section_exit();
+    }
+
+    void operator()()
+    {
+        // Attempt to lock the mutex. If this fails
+        // then don't perform any processing. This will
+        // be handled by the thread holding the mutex.
+        if (_queue->_mutex.lock(0) == osOK) {
+            _dev->lock();
+            // Code will run on device unlock
+            _dev->unlock();
+            _queue->_mutex.unlock();
+        }
+    }
+};
+
+void USBDevice::USBSyncQueue::process(USBDevice *dev)
+{
+
+    core_util_critical_section_enter();
+    if (_event != 0) {
+        _queue->cancel(_event);
+        _event = 0;
+    }
+    EventContext context(this, dev);
+    Event<void()> event(_queue, context);
+    _event = event.post();
+    _abortable.wait(0);
+    core_util_critical_section_exit();
+}
+
+void USBDevice::USBSyncQueue::abort_process()
+{
+    _queue->cancel(_event);
+    _abortable.wait();
+    MBED_ASSERT(_pending == 0);
+}
+

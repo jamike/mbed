@@ -21,6 +21,7 @@
 #include "USBDevice_Types.h"
 #include "USBPhy.h"
 #include "mbed_critical.h"
+#include "mbed_events.h"
 
 /**
  * \defgroup usb_device USB Device
@@ -94,6 +95,11 @@ public:
     USBDevice(USBPhy *phy, uint16_t vendor_id, uint16_t product_id, uint16_t product_release);
 
     /**
+     * Destroy USBDevice
+     */
+    ~USBDevice();
+
+    /**
      * Initialize this instance
      *
      * This function must be called before calling
@@ -107,6 +113,8 @@ public:
      * Disable interrupts and stop sending events.
      */
     void deinit();
+
+    void thread_mode();
 
     /**
     * Check if the device is configured
@@ -540,6 +548,7 @@ private:
     bool _request_set_interface();
     void _change_state(DeviceState state);
     void _run_later(void (USBDevice::*function)());
+    void _process();
 
     void _complete_request();
     void _complete_request_xfer_done();
@@ -606,7 +615,7 @@ private:
     control_transfer_t _transfer;
     usb_device_t _device;
     uint32_t _max_packet_size_ep0;
-    void (USBDevice::*_post_process)();
+    CircularBuffer<void (USBDevice::*)(), 2> _post_process;
 
     bool _setup_ready;
     bool _abort_control;
@@ -614,6 +623,50 @@ private:
     uint16_t _current_interface;
     uint8_t _current_alternate;
     uint32_t _locked;
+
+    friend class EventContext;
+
+    class USBSync {
+    public:
+        USBSync() {};
+        virtual ~USBSync() {};
+        virtual void lock() = 0;
+        virtual void unlock() = 0;
+        virtual void process(USBDevice *dev) = 0;
+        virtual void abort_process() = 0;
+    };
+
+    class USBSyncISR : public USBSync {
+    public:
+        USBSyncISR();
+        virtual ~USBSyncISR();
+        virtual void lock();
+        virtual void unlock();
+        virtual void process(USBDevice *dev);
+        virtual void abort_process();
+    };
+
+    class USBSyncQueue : public USBSync {
+    public:
+        USBSyncQueue(EventQueue *queue);
+        virtual ~USBSyncQueue();
+        virtual void lock();
+        virtual void unlock();
+        virtual void process(USBDevice *dev);
+        virtual void abort_process();
+        rtos::Mutex _mutex;
+        rtos::Semaphore _abortable;
+        EventQueue *_queue;
+        int _event;
+        uint32_t _pending;
+    };
+
+    USBSyncISR _sync_isr;
+    USBSync *_sync;
+
+    PlatformMutex _mutex;
+    EventQueue *_queue;
+    bool _thread_mode;
 };
 
 #endif
