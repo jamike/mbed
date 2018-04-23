@@ -23,6 +23,7 @@
 
 #include "USBTester.h"
 #include "usb_phy_api.h"
+#include "USBPhyTest.h"
 
 // If disconnect() + connect() occur too fast the reset event will be dropped.
 // At a minimum there should be a 200us delay between disconnect and connect.
@@ -38,7 +39,8 @@ using namespace utest::v1;
 
 static USBPhy *get_phy()
 {
-    return get_usb_phy();
+    static USBPhyTest phy(get_usb_phy());
+    return &phy;
 }
 
 void control_basic_test()
