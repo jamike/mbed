@@ -250,7 +250,7 @@ void USBPhyHw::init(USBPhyEvents *events)
 
     volatile uint16_t buf;
     buf  = USB20X.INTENB0;
-    buf |= USB_INTENB0_SOFE;
+    //buf |= USB_INTENB0_SOFE;
     USB20X.INTENB0 = buf;
 
     greentea_send_kv("USBPhyHw::init", 1);
@@ -312,6 +312,7 @@ void USBPhyHw::sof_disable()
 
 void USBPhyHw::set_address(uint8_t address)
 {
+    greentea_send_kv("USBPhyHw::set_address =", address);
     if (address <= 127) {
         usbx_function_set_pid_buf(USB_FUNCTION_PIPE0);      /* OK */
     } else {
@@ -683,6 +684,9 @@ void USBPhyHw::process()
                 USB_FUNCTION_BITBEMP  |
                 USB_FUNCTION_BITNRDY  |
                 USB_FUNCTION_BITBRDY ))) {
+        // Re-enable interrupt
+        GIC_ClearPendingIRQ(USBIX_IRQn);
+        GIC_EnableIRQ(USBIX_IRQn);
         return;
     }
 
@@ -878,6 +882,7 @@ void USBPhyHw::process()
             }
         }
 
+        greentea_send_kv("USBPhyHw::setup =", (int_sts0 & USB_FUNCTION_BITCTSQ));
         switch (int_sts0 & USB_FUNCTION_BITCTSQ) {
             case USB_FUNCTION_CS_IDST:
                 if (g_usbx_function_TestModeFlag == DEVDRV_USBF_YES) {
@@ -1155,13 +1160,18 @@ void USBPhyHw::process()
     dumy_sts = USB20X.INTSTS1;
     (void)dumy_sts;
 
+//    greentea_send_kv("USBPhyHw::enabling0 ", int_sts0);
+//    greentea_send_kv("USBPhyHw::enabling1 ", int_sts1);
+//    greentea_send_kv("USBPhyHw::e0 ", int_enb0);
+
+    // Re-enable interrupt
+    GIC_ClearPendingIRQ(USBIX_IRQn);
+    GIC_EnableIRQ(USBIX_IRQn);
+
 }
 
 void USBPhyHw::_usbisr(void) {
     GIC_DisableIRQ(USBIX_IRQn);
     instance->events->start_process();
-    // Re-enable interrupt
-    GIC_ClearPendingIRQ(USBIX_IRQn);
-    GIC_EnableIRQ(USBIX_IRQn);
 }
 #endif

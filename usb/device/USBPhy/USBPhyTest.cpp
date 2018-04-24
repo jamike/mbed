@@ -42,6 +42,7 @@ public:
 
     void buffer_mode(bool enable)
     {
+        enable = false;
         lock();
         if (_buffer_mode == enable) {
             unlock();
