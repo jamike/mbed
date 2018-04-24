@@ -296,7 +296,7 @@ Case cases[] = {
 
 utest::v1::status_t greentea_test_setup(const size_t number_of_cases)
 {
-    GREENTEA_SETUP(120, "pyusb_basic");
+    GREENTEA_SETUP(240, "pyusb_basic");
     return greentea_test_setup_handler(number_of_cases);
 }
 

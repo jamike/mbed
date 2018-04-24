@@ -223,8 +223,8 @@ class PyusbBasicTest(BaseHostTest):
         self.send_kv("placeholder", status)
 
     def find_device(self, serial_number):
-        # to make it more reliable, 20 retries in 2[s]
-        for _ in range(20):
+        # to make it more reliable, 50 retries in 5[s]
+        for _ in range(50):
             dev = usb.core.find(custom_match=TestMatch(serial_number))
             if dev is not None:
                 break
