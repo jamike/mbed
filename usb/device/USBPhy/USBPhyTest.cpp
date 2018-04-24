@@ -22,8 +22,6 @@
 #include "mbed_critical.h"
 
 #include <stdio.h>
-#include "Mutex.h"
-#include "Thread.h"
 
 #include "ISRSerial.h"
 
@@ -48,15 +46,12 @@ public:
         rtos::Semaphore sem(0);
         int ret = queue->call(this, &USBPhyEventsTest::_enable_events, &sem, enable);
         MBED_ASSERT(ret != 0);
-//        serial.printf("Waiting on semaphore %i thread=%i\r\n", ret, rtos::Thread::gettid());
         sem.wait();
-//        serial.printf("Semaphore done\r\n");
         MBED_ASSERT(enabled == enable);
     }
 
     void _enable_events(rtos::Semaphore *sem, bool enable)
     {
-//        serial.printf("Running event thread=%i\r\n", rtos::Thread::gettid());
         core_util_critical_section_enter();
         if (!enable && task) {
             queue->cancel(task);
@@ -65,14 +60,11 @@ public:
         core_util_critical_section_exit();
 
         sem->release();
-
-//        serial.printf("Event done\r\n");
     }
 
     virtual void reset()
     {
         events->reset();
-//        serial.printf("Reset\r\n");
     }
     virtual void ep0_setup()
     {
@@ -124,22 +116,13 @@ public:
         }
 
         core_util_critical_section_exit();
-//        events->start_process();
     }
 
     void _start_process()
     {
-//        mut.lock();
-//        serial.printf("1\r\n");
-//        mut.unlock();
-
         MBED_ASSERT(enabled);
         task = 0;
         events->start_process();
-
-//        mut.lock();
-//        serial.printf("2\r\n");
-//        mut.unlock();
     }
 
     USBPhyEvents *events;
@@ -179,13 +162,11 @@ bool USBPhyTest::powered()
 
 void USBPhyTest::connect()
 {
-//    serial.printf("Connect\r\n");
     phy->connect();
 }
 
 void USBPhyTest::disconnect()
 {
-//    serial.printf("Disconnect\r\n");
     phy->disconnect();
 }
 
@@ -296,6 +277,5 @@ void USBPhyTest::endpoint_abort(usb_ep_t endpoint)
 
 void USBPhyTest::process()
 {
-//    Thread::wait(2);
     phy->process();
 }
