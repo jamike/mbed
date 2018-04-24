@@ -20,6 +20,7 @@
 #include "USBPhy.h"
 
 class USBPhyEventsTest;
+class BufferablePrintf;
 
 class USBPhyTest : public USBPhy {
 public:
@@ -257,7 +258,10 @@ public:
     virtual void process();
 
     USBPhy *phy;
+    BufferablePrintf *io;
     USBPhyEventsTest *events;
+    bool pre_addr;
+    bool addressed;
 };
 
 #endif
