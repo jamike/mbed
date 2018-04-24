@@ -22,7 +22,9 @@
 #include "greentea-client/test_env.h"
 #include "greentea-client/greentea_serial.h"
 #include "greentea-client/greentea_metrics.h"
+#include "Mutex.h"
 
+rtos::Mutex mut;
 
 /**
  *   Generic test suite transport protocol keys
@@ -295,11 +297,13 @@ inline void greentea_write_int(const int val)
  */
 extern "C" void greentea_send_kv(const char *key, const char *val) {
     if (key && val) {
+        mut.lock();
         greentea_write_preamble();
         greentea_write_string(key);
         greentea_serial->putc(';');
         greentea_write_string(val);
         greentea_write_postamble();
+        mut.unlock();
     }
 }
 
@@ -318,11 +322,13 @@ extern "C" void greentea_send_kv(const char *key, const char *val) {
  */
 void greentea_send_kv(const char *key, const int val) {
     if (key) {
+        mut.lock();
         greentea_write_preamble();
         greentea_write_string(key);
         greentea_serial->putc(';');
         greentea_write_int(val);
         greentea_write_postamble();
+        mut.unlock();
     }
 }
 
@@ -342,6 +348,7 @@ void greentea_send_kv(const char *key, const int val) {
  */
 void greentea_send_kv(const char *key, const char *val, const int result) {
     if (key) {
+        mut.lock();
         greentea_write_preamble();
         greentea_write_string(key);
         greentea_serial->putc(';');
@@ -349,6 +356,7 @@ void greentea_send_kv(const char *key, const char *val, const int result) {
         greentea_serial->putc(';');
         greentea_write_int(result);
         greentea_write_postamble();
+        mut.unlock();
 
     }
 }
@@ -375,6 +383,7 @@ void greentea_send_kv(const char *key, const char *val, const int result) {
  */
 void greentea_send_kv(const char *key, const char *val, const int passes, const int failures) {
     if (key) {
+        mut.lock();
         greentea_write_preamble();
         greentea_write_string(key);
         greentea_serial->putc(';');
@@ -384,6 +393,7 @@ void greentea_send_kv(const char *key, const char *val, const int passes, const 
         greentea_serial->putc(';');
         greentea_write_int(failures);
         greentea_write_postamble();
+        mut.unlock();
     }
 }
 
@@ -408,6 +418,7 @@ void greentea_send_kv(const char *key, const char *val, const int passes, const 
  */
 void greentea_send_kv(const char *key, const int passes, const int failures) {
     if (key) {
+        mut.lock();
         greentea_write_preamble();
         greentea_write_string(key);
         greentea_serial->putc(';');
@@ -415,6 +426,7 @@ void greentea_send_kv(const char *key, const int passes, const int failures) {
         greentea_serial->putc(';');
         greentea_write_int(failures);
         greentea_write_postamble();
+        mut.unlock();
     }
 }
 

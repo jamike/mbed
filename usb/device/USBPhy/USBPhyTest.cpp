@@ -26,7 +26,7 @@
 
 #include "Mutex.h"
 
-rtos::Mutex mut;
+extern rtos::Mutex mut;
 
 #define STRING_STACK_LIMIT    120
 class BufferablePrintf {
